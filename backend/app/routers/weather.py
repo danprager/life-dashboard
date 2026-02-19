@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 import yaml
 
 from app.models.weather import WeatherResponse
+from app.services.fire import fetch_fire_data
 from app.services.weather import get_weather
 
 router = APIRouter()
@@ -15,10 +16,18 @@ def load_locations():
 @router.get("/", response_model=list[WeatherResponse])
 async def all_locations():
     locations = load_locations()
+    fire_data = fetch_fire_data()
     results = []
     for loc in locations:
         try:
-            results.append(await get_weather(loc["city"], loc["country"], loc["bom_url"]))
+            results.append(await get_weather(
+                loc["city"],
+                loc["country"],
+                loc["bom_url"],
+                fire_district=loc.get("fire_district"),
+                show_fire_danger=loc.get("show_fire_danger", False),
+                fire_data=fire_data,
+            ))
         except Exception as e:
             raise HTTPException(status_code=502, detail=str(e))
     return results

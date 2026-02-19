@@ -49,8 +49,8 @@
         </v-row>
 
         <!-- BOM links -->
-        <div class="d-flex align-center gap-2">
-          <span class="text-caption text-medium-emphasis">BOM forecasts:</span>
+        <div class="d-flex align-center mb-3">
+          <span class="text-caption text-medium-emphasis mr-3">BOM forecasts:</span>
           <v-btn
             :href="weather.bom_today_url"
             target="_blank"
@@ -73,6 +73,31 @@
             7-day
           </v-btn>
         </div>
+
+        <!-- Total Fire Ban banner -->
+        <div v-if="weather.total_fire_ban" class="tfb-banner mb-3">
+          TOTAL FIRE BAN
+        </div>
+
+        <!-- Fire Danger Ratings row (Castlemaine only) -->
+        <div v-if="weather.fire_danger" class="mb-2">
+          <div class="text-subtitle-1 mb-1">Fire Danger</div>
+          <div class="fdr-row">
+            <div
+              v-for="(day, i) in weather.fire_danger"
+              :key="i"
+              class="fdr-day text-center"
+            >
+              <div class="text-caption font-weight-bold mb-1">{{ fdrDayLabel(i) }}</div>
+              <div
+                class="fdr-badge text-caption font-weight-bold"
+                :style="{ backgroundColor: fdrColour(day.rating), color: '#fff' }"
+              >
+                {{ day.rating }}{{ day.index !== null ? ' ' + day.index : '' }}
+              </div>
+            </div>
+          </div>
+        </div>
       </v-card-text>
     </v-expand-transition>
   </v-card>
@@ -89,6 +114,28 @@ defineProps({
 })
 
 const collapsed = ref(false)
+
+const FDR_COLOURS = {
+  'No Rating':    '#888888',
+  'Low-Moderate': '#3d9ad6',
+  'Moderate':     '#3d9ad6',
+  'High':         '#f5a623',
+  'Very High':    '#e07020',
+  'Severe':       '#e8260b',
+  'Extreme':      '#c8003a',
+  'Catastrophic': '#2d0000',
+}
+
+function fdrColour(rating) {
+  return FDR_COLOURS[rating] ?? '#888888'
+}
+
+// CFA feed does not include numeric FDI values; index is always null from this feed.
+// Labels based on position in the 4-day array, not the day-of-week letter.
+const FDR_DAY_LABELS = ['Today', 'Tomorrow', '+2', '+3']
+function fdrDayLabel(i) {
+  return FDR_DAY_LABELS[i] ?? `+${i}`
+}
 </script>
 
 <style scoped>
@@ -98,5 +145,29 @@ const collapsed = ref(false)
 .forecast-day {
   min-width: 0;
   flex: 1;
+}
+.tfb-banner {
+  background-color: #e8260b;
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+.fdr-row {
+  display: flex;
+  gap: 4px;
+}
+.fdr-day {
+  flex: 1;
+  min-width: 0;
+}
+.fdr-badge {
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

@@ -21,7 +21,14 @@ WMO_DESCRIPTIONS = {
 }
 
 
-async def get_weather(city: str, country: str, bom_url: str) -> WeatherResponse:
+async def get_weather(
+    city: str,
+    country: str,
+    bom_url: str,
+    fire_district: str = None,
+    show_fire_danger: bool = False,
+    fire_data: dict = None,
+) -> WeatherResponse:
     async with httpx.AsyncClient() as client:
         # Step 1: geocode the city
         geo = await client.get(GEOCODE_URL, params={"name": city, "count": 1, "country": country})
@@ -61,6 +68,15 @@ async def get_weather(city: str, country: str, bom_url: str) -> WeatherResponse:
             temp_max=round(daily["temperature_2m_max"][i]),
         ))
 
+    # Attach fire data if available for this location's district
+    total_fire_ban = False
+    fire_danger = None
+    if fire_district and fire_data:
+        district_data = fire_data.get(fire_district, {})
+        total_fire_ban = district_data.get("total_fire_ban", False)
+        if show_fire_danger:
+            fire_danger = district_data.get("fire_danger")
+
     code = current["weather_code"]
     return WeatherResponse(
         location=result['name'],
@@ -73,4 +89,6 @@ async def get_weather(city: str, country: str, bom_url: str) -> WeatherResponse:
         forecast_7day=forecast_7day,
         bom_today_url=bom_url + "#today",
         bom_7day_url=bom_url + "#7-days",
+        total_fire_ban=total_fire_ban,
+        fire_danger=fire_danger,
     )

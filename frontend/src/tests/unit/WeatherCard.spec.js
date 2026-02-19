@@ -25,7 +25,16 @@ const mockWeather = {
   ],
   bom_today_url: 'https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine#today',
   bom_7day_url: 'https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine#7-days',
+  total_fire_ban: false,
+  fire_danger: null,
 }
+
+const mockFireDanger = [
+  { day: 'T', rating: 'Extreme', index: 87 },
+  { day: 'F', rating: 'High', index: 42 },
+  { day: 'S', rating: 'Very High', index: null },
+  { day: 'S', rating: 'Moderate', index: 18 },
+]
 
 describe('WeatherCard', () => {
   it('displays the location name', () => {
@@ -75,6 +84,71 @@ describe('WeatherCard', () => {
     const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
     await wrapper.find('button').trigger('click')
     expect(wrapper.find('.v-card-text').isVisible()).toBe(false)
+  })
+})
+
+describe('WeatherCard — Total Fire Ban', () => {
+  it('shows TFB banner when total_fire_ban is true', () => {
+    const weather = { ...mockWeather, total_fire_ban: true }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.find('.tfb-banner').exists()).toBe(true)
+    expect(wrapper.text()).toContain('TOTAL FIRE BAN')
+  })
+
+  it('does not show TFB banner when total_fire_ban is false', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.find('.tfb-banner').exists()).toBe(false)
+  })
+})
+
+describe('WeatherCard — Fire Danger Ratings row', () => {
+  it('shows FDR row when fire_danger is non-null', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.find('.fdr-row').exists()).toBe(true)
+  })
+
+  it('does not show FDR row when fire_danger is null', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.find('.fdr-row').exists()).toBe(false)
+  })
+
+  it('renders 4 day columns in FDR row', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.findAll('.fdr-day')).toHaveLength(4)
+  })
+
+  it('shows Today/Tomorrow/+2/+3 day labels', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.text()).toContain('Today')
+    expect(wrapper.text()).toContain('Tomorrow')
+    expect(wrapper.text()).toContain('+2')
+    expect(wrapper.text()).toContain('+3')
+  })
+
+  it('displays FDI index inline with rating when present', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    // mockFireDanger[0] = Extreme 87, [1] = High 42
+    expect(wrapper.text()).toContain('Extreme 87')
+    expect(wrapper.text()).toContain('High 42')
+  })
+
+  it('omits FDI index when null', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    const fdrDays = wrapper.findAll('.fdr-day')
+    // Day index 2 has index: null — badge text should be just the rating, no trailing number
+    expect(fdrDays[2].find('.fdr-badge').text().trim()).toBe('Very High')
+  })
+
+  it('displays rating labels', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.text()).toContain('Extreme')
+    expect(wrapper.text()).toContain('High')
   })
 })
 
