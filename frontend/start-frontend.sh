@@ -9,7 +9,7 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
-echo "Starting frontend at http://localhost:5173"
+echo "Starting frontend at http://localhost:5174"
 echo "Press CTRL+C to stop."
 echo ""
 
