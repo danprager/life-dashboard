@@ -18,16 +18,16 @@ async def all_locations():
     results = []
     for loc in locations:
         try:
-            results.append(await get_weather(loc["city"], loc["country"]))
+            results.append(await get_weather(loc["city"], loc["country"], loc["bom_url"]))
         except Exception as e:
             raise HTTPException(status_code=502, detail=str(e))
     return results
 
 
 @router.get("/{city}", response_model=WeatherResponse)
-async def single_location(city: str, country: str = "AU"):
+async def single_location(city: str, country: str = "AU", bom_url: str = ""):
     try:
-        return await get_weather(city, country)
+        return await get_weather(city, country, bom_url)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

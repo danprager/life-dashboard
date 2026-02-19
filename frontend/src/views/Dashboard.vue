@@ -1,7 +1,5 @@
 <template>
   <v-container fluid class="pa-4">
-    <h1 class="text-h4 mb-6">My Dashboard</h1>
-
     <v-row v-if="loading">
       <v-col cols="12" class="text-center">
         <v-progress-circular indeterminate />

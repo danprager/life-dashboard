@@ -1,6 +1,13 @@
 locations:
-  - name: Home
-    city: Sydney
+  - name: Castlemaine
+    city: Castlemaine
     country: AU
-    latitude: -33.8688
-    longitude: 151.2093
+    bom_url: "https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine"
+  - name: Melbourne
+    city: Melbourne
+    country: AU
+    bom_url: "https://www.bom.gov.au/location/australia/victoria/central/bvic_pt042-melbourne"
+  - name: Sorrento
+    city: Sorrento
+    country: AU
+    bom_url: "https://www.bom.gov.au/location/australia/victoria/central/o2607452563-sorrento"

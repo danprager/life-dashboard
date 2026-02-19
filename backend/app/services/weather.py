@@ -1,6 +1,8 @@
+from datetime import datetime
+
 import httpx
 
-from app.models.weather import WeatherResponse
+from app.models.weather import DayForecast, WeatherResponse
 
 # Open-Meteo — free, no API key required
 # Docs: https://open-meteo.com/en/docs
@@ -19,7 +21,7 @@ WMO_DESCRIPTIONS = {
 }
 
 
-async def get_weather(city: str, country: str) -> WeatherResponse:
+async def get_weather(city: str, country: str, bom_url: str) -> WeatherResponse:
     async with httpx.AsyncClient() as client:
         # Step 1: geocode the city
         geo = await client.get(GEOCODE_URL, params={"name": city, "count": 1, "country": country})
@@ -31,21 +33,44 @@ async def get_weather(city: str, country: str) -> WeatherResponse:
         result = results[0]
         lat, lon = result["latitude"], result["longitude"]
 
-        # Step 2: fetch current weather
+        # Step 2: fetch current weather + 8-day daily forecast in one call
         weather = await client.get(FORECAST_URL, params={
             "latitude": lat,
             "longitude": lon,
             "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
+            "daily": "temperature_2m_max,temperature_2m_min,weather_code",
+            "forecast_days": 8,
             "timezone": "auto",
         })
         weather.raise_for_status()
-        current = weather.json()["current"]
+        data = weather.json()
+        current = data["current"]
+        daily = data["daily"]
+
+    # Today min/max from daily index 0
+    temp_min = daily["temperature_2m_min"][0]
+    temp_max = daily["temperature_2m_max"][0]
+
+    # 7-day forecast from daily indices 1–7
+    forecast_7day = []
+    for i in range(1, 8):
+        date = datetime.strptime(daily["time"][i], "%Y-%m-%d")
+        forecast_7day.append(DayForecast(
+            day=date.strftime("%A")[0],
+            temp_min=round(daily["temperature_2m_min"][i]),
+            temp_max=round(daily["temperature_2m_max"][i]),
+        ))
 
     code = current["weather_code"]
     return WeatherResponse(
-        location=f"{result['name']}, {country}",
+        location=result['name'],
         temperature=current["temperature_2m"],
         description=WMO_DESCRIPTIONS.get(code, "Unknown"),
         humidity=current["relative_humidity_2m"],
         wind_speed=current["wind_speed_10m"],
+        temp_min=temp_min,
+        temp_max=temp_max,
+        forecast_7day=forecast_7day,
+        bom_today_url=bom_url + "#today",
+        bom_7day_url=bom_url + "#7-days",
     )

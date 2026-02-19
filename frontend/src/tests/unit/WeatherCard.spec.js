@@ -3,36 +3,79 @@
  * Tests rendering in isolation with mock props.
  */
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
-// import WeatherCard from '@/components/WeatherCard.vue'
+import { mountWithVuetify } from './test-utils.js'
+import WeatherCard from '@/components/WeatherCard.vue'
 
 const mockWeather = {
-  location: 'Sydney, AU',
-  temperature: 22.4,
+  location: 'Castlemaine',
+  temperature: 17.8,
   description: 'Partly cloudy',
-  humidity: 65,
-  wind_speed: 15.2,
+  humidity: 55,
+  wind_speed: 12.3,
+  temp_min: 11.2,
+  temp_max: 24.1,
+  forecast_7day: [
+    { day: 'F', temp_min: 13, temp_max: 23 },
+    { day: 'S', temp_min: 11, temp_max: 21 },
+    { day: 'S', temp_min: 10, temp_max: 20 },
+    { day: 'M', temp_min: 12, temp_max: 22 },
+    { day: 'T', temp_min: 14, temp_max: 24 },
+    { day: 'W', temp_min: 13, temp_max: 25 },
+    { day: 'T', temp_min: 11, temp_max: 23 },
+  ],
+  bom_today_url: 'https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine#today',
+  bom_7day_url: 'https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine#7-days',
 }
 
-// TODO: implement tests as part of TDD workflow
-// Vuetify requires a plugin wrapper — set that up before enabling tests.
+describe('WeatherCard', () => {
+  it('displays the location name', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.text()).toContain('Castlemaine')
+  })
 
-// describe('WeatherCard', () => {
-//   it('displays the location name', () => {
-//     const wrapper = mount(WeatherCard, { props: { weather: mockWeather } })
-//     expect(wrapper.text()).toContain('Sydney, AU')
-//   })
-//
-//   it('displays temperature', () => {
-//     const wrapper = mount(WeatherCard, { props: { weather: mockWeather } })
-//     expect(wrapper.text()).toContain('22.4')
-//   })
-//
-//   it('collapses when the toggle is clicked', async () => {
-//     const wrapper = mount(WeatherCard, { props: { weather: mockWeather } })
-//     await wrapper.find('button').trigger('click')
-//     expect(wrapper.find('.v-card-text').isVisible()).toBe(false)
-//   })
-// })
+  it('displays temperature as rounded integer', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.text()).toContain('18°C')
+  })
+
+  it('displays today min and max as integers', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.text()).toContain('Min 11°')
+    expect(wrapper.text()).toContain('Max 24°')
+  })
+
+  it('renders 7-day forecast row with 7 entries', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    const days = wrapper.findAll('.forecast-day')
+    expect(days).toHaveLength(7)
+  })
+
+  it('displays correct day letters in forecast', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.text()).toContain('F')
+  })
+
+  it('renders BOM Today link targeting new tab', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    const links = wrapper.findAll('a[target="_blank"]')
+    const todayLink = links.find(l => l.text().trim() === 'Today')
+    expect(todayLink).toBeTruthy()
+    expect(todayLink.attributes('href')).toContain('#today')
+  })
+
+  it('renders BOM 7-day link targeting new tab', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    const links = wrapper.findAll('a[target="_blank"]')
+    const sevenDayLink = links.find(l => l.text().trim() === '7-day')
+    expect(sevenDayLink).toBeTruthy()
+    expect(sevenDayLink.attributes('href')).toContain('#7-days')
+  })
+
+  it('collapses when the toggle is clicked', async () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.find('.v-card-text').isVisible()).toBe(false)
+  })
+})
 
 export { mockWeather }
