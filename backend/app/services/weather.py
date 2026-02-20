@@ -28,17 +28,24 @@ async def get_weather(
     fire_district: str = None,
     show_fire_danger: bool = False,
     fire_data: dict = None,
+    latitude: float = None,
+    longitude: float = None,
+    location_name: str = None,
 ) -> WeatherResponse:
     async with httpx.AsyncClient() as client:
-        # Step 1: geocode the city
-        geo = await client.get(GEOCODE_URL, params={"name": city, "count": 1, "country": country})
-        geo.raise_for_status()
-        results = geo.json().get("results", [])
-        if not results:
-            raise ValueError(f"Location not found: {city}, {country}")
-
-        result = results[0]
-        lat, lon = result["latitude"], result["longitude"]
+        # Step 1: resolve coordinates — use config values if provided, else geocode
+        if latitude is not None and longitude is not None:
+            lat, lon = latitude, longitude
+            name = location_name or city
+        else:
+            geo = await client.get(GEOCODE_URL, params={"name": city, "count": 1, "country": country})
+            geo.raise_for_status()
+            results = geo.json().get("results", [])
+            if not results:
+                raise ValueError(f"Location not found: {city}, {country}")
+            result = results[0]
+            lat, lon = result["latitude"], result["longitude"]
+            name = result["name"]
 
         # Step 2: fetch current weather + 8-day daily forecast in one call
         weather = await client.get(FORECAST_URL, params={
@@ -79,7 +86,7 @@ async def get_weather(
 
     code = current["weather_code"]
     return WeatherResponse(
-        location=result['name'],
+        location=name,
         temperature=current["temperature_2m"],
         description=WMO_DESCRIPTIONS.get(code, "Unknown"),
         humidity=current["relative_humidity_2m"],

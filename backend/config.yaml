@@ -2,18 +2,24 @@ locations:
   - name: Castlemaine
     city: Castlemaine
     country: AU
+    latitude: -37.0678
+    longitude: 144.2218
     bom_url: "https://www.bom.gov.au/location/australia/victoria/north-central/bvic_pt012-castlemaine"
     fire_district: "North Central"
     show_fire_danger: true
   - name: Melbourne
     city: Melbourne
     country: AU
+    latitude: -37.8136
+    longitude: 144.9631
     bom_url: "https://www.bom.gov.au/location/australia/victoria/central/bvic_pt042-melbourne"
     fire_district: "Central"
     show_fire_danger: false
   - name: Sorrento
     city: Sorrento
     country: AU
+    latitude: -38.3407
+    longitude: 144.7433
     bom_url: "https://www.bom.gov.au/location/australia/victoria/central/o2607452563-sorrento"
     fire_district: "Central"
     show_fire_danger: false

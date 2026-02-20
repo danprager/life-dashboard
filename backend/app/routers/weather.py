@@ -27,6 +27,9 @@ async def all_locations():
                 fire_district=loc.get("fire_district"),
                 show_fire_danger=loc.get("show_fire_danger", False),
                 fire_data=fire_data,
+                latitude=loc.get("latitude"),
+                longitude=loc.get("longitude"),
+                location_name=loc.get("name"),
             ))
         except Exception as e:
             raise HTTPException(status_code=502, detail=str(e))
