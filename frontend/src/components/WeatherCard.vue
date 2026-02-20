@@ -81,7 +81,26 @@
 
         <!-- Fire Danger Ratings row (Castlemaine only) -->
         <div v-if="weather.fire_danger" class="mb-2">
-          <div class="text-subtitle-1 mb-1">Fire Danger</div>
+          <div class="d-flex align-center mb-1">
+            <span class="text-subtitle-1">🔥 Fire danger rating 🔥</span>
+            <v-btn
+              class="fdr-help-btn ml-1"
+              variant="tonal"
+              size="small"
+              density="compact"
+              @click="helpOpen = !helpOpen"
+            >Scale</v-btn>
+          </div>
+          <div v-if="helpOpen" class="fdr-help-panel mb-2">
+            <div
+              v-for="[rating, colours] in Object.entries(FDR_COLOURS)"
+              :key="rating"
+              class="fdr-help-band text-caption font-weight-bold px-2 py-1"
+              :style="{ backgroundColor: colours.bg, color: colours.text }"
+            >
+              {{ rating }} ({{ colours.fbi }})
+            </div>
+          </div>
           <div class="fdr-row">
             <div
               v-for="(day, i) in weather.fire_danger"
@@ -91,7 +110,7 @@
               <div class="text-caption font-weight-bold mb-1">{{ fdrDayLabel(i) }}</div>
               <div
                 class="fdr-badge text-caption font-weight-bold"
-                :style="{ backgroundColor: fdrColour(day.rating), color: '#fff' }"
+                :style="{ backgroundColor: fdrColour(day.rating), color: fdrText(day.rating) }"
               >
                 {{ day.rating }}{{ day.index !== null ? ' ' + day.index : '' }}
               </div>
@@ -114,20 +133,24 @@ defineProps({
 })
 
 const collapsed = ref(false)
+const helpOpen = ref(false)
 
 const FDR_COLOURS = {
-  'No Rating':    '#888888',
-  'Low-Moderate': '#3d9ad6',
-  'Moderate':     '#3d9ad6',
-  'High':         '#f5a623',
-  'Very High':    '#e07020',
-  'Severe':       '#e8260b',
-  'Extreme':      '#c8003a',
-  'Catastrophic': '#2d0000',
+  'Catastrophic':{ bg: '#922B21', text: '#ffffff', fbi: '≥ 100' },
+  'Extreme':     { bg: '#E87820', text: '#000000', fbi: '50–99' },
+  'High':        { bg: '#F7D94A', text: '#000000', fbi: '24–49' },
+  'Moderate':    { bg: '#6DB840', text: '#000000', fbi: '12–23' },
+  'No Rating':   { bg: '#FFFFFF', text: '#000000', fbi: '< 12'  },
 }
 
+const FDR_FALLBACK = { bg: '#888888', text: '#ffffff' }
+
 function fdrColour(rating) {
-  return FDR_COLOURS[rating] ?? '#888888'
+  return (FDR_COLOURS[rating] ?? FDR_FALLBACK).bg
+}
+
+function fdrText(rating) {
+  return (FDR_COLOURS[rating] ?? FDR_FALLBACK).text
 }
 
 // CFA feed does not include numeric FDI values; index is always null from this feed.
@@ -169,5 +192,10 @@ function fdrDayLabel(i) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.fdr-help-panel {
+  border: 1px solid #eee;
+  border-radius: 4px;
+  overflow: hidden;
 }
 </style>

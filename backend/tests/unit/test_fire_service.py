@@ -5,7 +5,7 @@ Tests XML parsing logic in isolation — no network calls made.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from app.services.fire import parse_fire_xml, fetch_fire_data
+from app.services.fire import parse_bom_xml, parse_cfa_tfb, fetch_fire_data
 
 # Minimal sample RSS XML matching the real CFA feed structure.
 # Day 1 (Thursday): North Central has TFB=YES, rating=EXTREME; Central has TFB=NO, rating=MODERATE
@@ -38,46 +38,140 @@ SAMPLE_XML = b"""<?xml version="1.0" encoding="utf-8"?>
 </channel></rss>"""
 
 
-def test_north_central_has_tfb():
-    result = parse_fire_xml(SAMPLE_XML)
-    assert result["North Central"]["total_fire_ban"] is True
+# Minimal BOM XML feed sample.
+# Central: F=High(34), S=Moderate(23), S=High(42), M=Moderate(20)
+# North Central: F=High(36), S=High(35), S=High(33), M=Moderate(16)
+BOM_SAMPLE_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
+<product>
+  <forecast>
+    <area aac="VIC_FW007" description="Central" type="fire-district">
+      <forecast-period index="0" start-time-local="2026-02-20T05:25:00+11:00">
+        <element type="fire_behaviour_index">34</element>
+        <text type="fire_danger">High</text>
+      </forecast-period>
+      <forecast-period index="1" start-time-local="2026-02-21T00:00:00+11:00">
+        <element type="fire_behaviour_index">23</element>
+        <text type="fire_danger">Moderate</text>
+      </forecast-period>
+      <forecast-period index="2" start-time-local="2026-02-22T00:00:00+11:00">
+        <element type="fire_behaviour_index">42</element>
+        <text type="fire_danger">High</text>
+      </forecast-period>
+      <forecast-period index="3" start-time-local="2026-02-23T00:00:00+11:00">
+        <element type="fire_behaviour_index">20</element>
+        <text type="fire_danger">Moderate</text>
+      </forecast-period>
+    </area>
+    <area aac="VIC_FW008" description="North Central" type="fire-district">
+      <forecast-period index="0" start-time-local="2026-02-20T05:25:00+11:00">
+        <element type="fire_behaviour_index">36</element>
+        <text type="fire_danger">High</text>
+      </forecast-period>
+      <forecast-period index="1" start-time-local="2026-02-21T00:00:00+11:00">
+        <element type="fire_behaviour_index">35</element>
+        <text type="fire_danger">High</text>
+      </forecast-period>
+      <forecast-period index="2" start-time-local="2026-02-22T00:00:00+11:00">
+        <element type="fire_behaviour_index">33</element>
+        <text type="fire_danger">High</text>
+      </forecast-period>
+      <forecast-period index="3" start-time-local="2026-02-23T00:00:00+11:00">
+        <element type="fire_behaviour_index">16</element>
+        <text type="fire_danger">Moderate</text>
+      </forecast-period>
+    </area>
+  </forecast>
+</product>"""
 
 
-def test_central_has_no_tfb():
-    result = parse_fire_xml(SAMPLE_XML)
+# --- parse_bom_xml tests ---
+
+def test_bom_returns_known_districts():
+    result = parse_bom_xml(BOM_SAMPLE_XML)
+    assert "Central" in result
+    assert "North Central" in result
+
+
+def test_bom_fire_danger_has_4_days():
+    result = parse_bom_xml(BOM_SAMPLE_XML)
+    assert len(result["Central"]) == 4
+
+
+def test_bom_fbi_index_is_integer():
+    result = parse_bom_xml(BOM_SAMPLE_XML)
+    assert result["Central"][0].index == 34
+    assert result["North Central"][0].index == 36
+
+
+def test_bom_rating_extracted():
+    result = parse_bom_xml(BOM_SAMPLE_XML)
+    assert result["Central"][0].rating == "High"
+    assert result["Central"][1].rating == "Moderate"
+
+
+def test_bom_day_letters_from_dates():
+    result = parse_bom_xml(BOM_SAMPLE_XML)
+    days = [d.day for d in result["Central"]]
+    assert days == ["F", "S", "S", "M"]
+
+
+def test_bom_returns_empty_on_malformed_xml():
+    assert parse_bom_xml(b"not xml <<<") == {}
+
+
+# --- parse_cfa_tfb tests ---
+
+def test_cfa_tfb_north_central_has_ban():
+    result = parse_cfa_tfb(SAMPLE_XML)
+    assert result["North Central"] is True
+
+
+def test_cfa_tfb_central_has_no_ban():
+    result = parse_cfa_tfb(SAMPLE_XML)
+    assert result["Central"] is False
+
+
+def test_cfa_tfb_returns_empty_on_malformed_xml():
+    assert parse_cfa_tfb(b"not xml <<<") == {}
+
+
+
+def test_fetch_fire_data_merges_bom_and_cfa():
+    with patch("app.services.fire._fetch_url") as mock_fetch:
+        def side_effect(url, timeout=10):
+            if "bom.gov.au" in url:
+                return BOM_SAMPLE_XML
+            return SAMPLE_XML
+        mock_fetch.side_effect = side_effect
+        result = fetch_fire_data()
     assert result["Central"]["total_fire_ban"] is False
+    assert result["North Central"]["total_fire_ban"] is True
+    assert result["Central"]["fire_danger"][0].index == 34
+    assert result["North Central"]["fire_danger"][0].index == 36
 
 
-def test_fire_danger_has_4_days():
-    result = parse_fire_xml(SAMPLE_XML)
-    assert len(result["North Central"]["fire_danger"]) == 4
+def test_fetch_fire_data_bom_failure_nulls_fire_danger():
+    with patch("app.services.fire._fetch_url") as mock_fetch:
+        def side_effect(url, timeout=10):
+            if "bom.gov.au" in url:
+                raise Exception("BOM down")
+            return SAMPLE_XML
+        mock_fetch.side_effect = side_effect
+        result = fetch_fire_data()
+    assert result.get("North Central", {}).get("fire_danger") is None
+    assert result.get("North Central", {}).get("total_fire_ban") is True
 
 
-def test_day_letters_derived_from_title():
-    result = parse_fire_xml(SAMPLE_XML)
-    days = [d.day for d in result["North Central"]["fire_danger"]]
-    assert days == ["T", "F", "S", "S"]
-
-
-def test_ratings_are_title_cased():
-    result = parse_fire_xml(SAMPLE_XML)
-    fdr = result["North Central"]["fire_danger"]
-    assert fdr[0].rating == "Extreme"
-    assert fdr[1].rating == "High"
-    assert fdr[2].rating == "Very High"
-    assert fdr[3].rating == "Moderate"
-
-
-def test_low_moderate_hyphen_preserved():
-    result = parse_fire_xml(SAMPLE_XML)
-    fdr = result["Central"]["fire_danger"]
-    assert fdr[3].rating == "Low-Moderate"
-
-
-def test_index_is_none():
-    result = parse_fire_xml(SAMPLE_XML)
-    for day in result["North Central"]["fire_danger"]:
-        assert day.index is None
+def test_fetch_fire_data_cfa_failure_defaults_tfb_false():
+    with patch("app.services.fire._fetch_url") as mock_fetch:
+        def side_effect(url, timeout=10):
+            if "cfa.vic.gov.au" in url:
+                raise Exception("CFA down")
+            return BOM_SAMPLE_XML
+        mock_fetch.side_effect = side_effect
+        result = fetch_fire_data()
+    assert result["Central"]["total_fire_ban"] is False
+    assert result["Central"]["fire_danger"][0].index == 34
 
 
 def test_fetch_fire_data_returns_empty_on_network_error():

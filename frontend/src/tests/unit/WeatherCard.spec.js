@@ -152,4 +152,99 @@ describe('WeatherCard — Fire Danger Ratings row', () => {
   })
 })
 
+describe('WeatherCard — FDR badge colours', () => {
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgb(${r}, ${g}, ${b})`
+  }
+
+  function badgeForRating(rating) {
+    const weather = { ...mockWeather, fire_danger: [{ day: 'T', rating, index: null }] }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    return wrapper.find('.fdr-badge')
+  }
+
+  it('Moderate badge has green background', () => {
+    expect(badgeForRating('Moderate').element.style.backgroundColor).toBe(hexToRgb('#6DB840'))
+  })
+
+  it('High badge has yellow background', () => {
+    expect(badgeForRating('High').element.style.backgroundColor).toBe(hexToRgb('#F7D94A'))
+  })
+
+  it('Extreme badge has orange background', () => {
+    expect(badgeForRating('Extreme').element.style.backgroundColor).toBe(hexToRgb('#E87820'))
+  })
+
+  it('Catastrophic badge has dark red background', () => {
+    expect(badgeForRating('Catastrophic').element.style.backgroundColor).toBe(hexToRgb('#922B21'))
+  })
+
+  it('No Rating badge has white background with black text', () => {
+    const badge = badgeForRating('No Rating')
+    expect(badge.element.style.backgroundColor).toBe(hexToRgb('#FFFFFF'))
+    expect(badge.element.style.color).toBe(hexToRgb('#000000'))
+  })
+
+  it('unknown rating falls back to grey', () => {
+    expect(badgeForRating('Very High').element.style.backgroundColor).toBe(hexToRgb('#888888'))
+  })
+})
+
+describe('WeatherCard — FDR help popup', () => {
+  it('shows ? button when fire_danger is non-null', () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    expect(wrapper.find('.fdr-help-btn').exists()).toBe(true)
+  })
+
+  it('does not show ? button when fire_danger is null', () => {
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather: mockWeather } })
+    expect(wrapper.find('.fdr-help-btn').exists()).toBe(false)
+  })
+
+  it('shows all five AFDRS rating labels after clicking ?', async () => {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    await wrapper.find('.fdr-help-btn').trigger('click')
+    const helpText = wrapper.find('.fdr-help-panel').text()
+    expect(helpText).toContain('No Rating')
+    expect(helpText).toContain('Moderate')
+    expect(helpText).toContain('High')
+    expect(helpText).toContain('Extreme')
+    expect(helpText).toContain('Catastrophic')
+  })
+})
+
+describe('WeatherCard — FDR scale panel FBI ranges', () => {
+  async function openPanel() {
+    const weather = { ...mockWeather, fire_danger: mockFireDanger }
+    const wrapper = mountWithVuetify(WeatherCard, { props: { weather } })
+    await wrapper.find('.fdr-help-btn').trigger('click')
+    return wrapper.find('.fdr-help-panel')
+  }
+
+  it('No Rating band shows FBI range < 12', async () => {
+    expect((await openPanel()).text()).toContain('< 12')
+  })
+
+  it('Moderate band shows FBI range 12–23', async () => {
+    expect((await openPanel()).text()).toContain('12–23')
+  })
+
+  it('High band shows FBI range 24–49', async () => {
+    expect((await openPanel()).text()).toContain('24–49')
+  })
+
+  it('Extreme band shows FBI range 50–99', async () => {
+    expect((await openPanel()).text()).toContain('50–99')
+  })
+
+  it('Catastrophic band shows FBI range ≥ 100', async () => {
+    expect((await openPanel()).text()).toContain('≥ 100')
+  })
+})
+
 export { mockWeather }
