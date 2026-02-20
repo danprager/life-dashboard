@@ -1,0 +1,4 @@
+- [x] Add `latitude`/`longitude` to all three locations in `config.yaml`
+- [x] Update `get_weather()` in `weather.py` to accept and use pinned coordinates
+- [x] Pass coordinates through from router to service
+- [x] Confirm existing tests pass (26 backend, 31 frontend)
